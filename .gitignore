@@ -1,0 +1,30 @@
+# Ignorar archivos de sistema de Windows
+AppData/
+Local/
+[Dd]esktop.ini
+Thumbs.db
+
+# Ignorar cachés y archivos temporales
+*.tmp
+*.temp
+*.log
+*.cache
+
+# Ignorar archivos de VS Code
+.vscode/
+!.vscode/settings.json
+
+# Ignorar node_modules (si usas Node.js)
+node_modules/
+
+# Ignorar archivos de entorno (como .env)
+.env
+.env.local
+
+# Ignorar archivos de Git
+*.orig
+
+# Ignorar archivos binarios
+*.exe
+*.dll
+*.bin

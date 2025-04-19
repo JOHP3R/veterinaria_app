@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Veterinaria App</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Veterinaria App</h1>
+        <div id="user-info">
+            <button id="login-btn">Iniciar Sesión</button>
+            <button id="register-btn">Registrarse</button>
+        </div>
+    </header>
+
+    <main>
+        <div id="login-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Iniciar Sesión</h2>
+                <form id="login-form">
+                    <input type="email" id="login-email" placeholder="Correo electrónico" required>
+                    <input type="password" id="login-password" placeholder="Contraseña" required>
+                    <button type="submit">Ingresar</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="register-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Registro de Usuario</h2>
+                <form id="register-form">
+                    <input type="text" id="reg-name" placeholder="Nombre completo" required>
+                    <input type="email" id="reg-email" placeholder="Correo electrónico" required>
+                    <input type="tel" id="reg-phone" placeholder="Teléfono" required>
+                    <input type="password" id="reg-password" placeholder="Contraseña" required>
+                    <button type="submit">Registrarse</button>
+                </form>
+            </div>
+        </div>
+
+        <section id="dashboard" class="hidden">
+            <h2>Bienvenido, <span id="username"></span></h2>
+            
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="mascotas">Mis Mascotas</button>
+                <button class="tab-btn" data-tab="citas">Mis Citas</button>
+                <button class="tab-btn" data-tab="nueva-cita">Nueva Cita</button>
+            </div>
+
+            <div id="mascotas" class="tab-content active">
+                <h3>Mis Mascotas</h3>
+                <button id="add-pet-btn">Agregar Mascota</button>
+                <div id="pets-list"></div>
+            </div>
+
+            <div id="citas" class="tab-content">
+                <h3>Mis Citas</h3>
+                <div id="appointments-list"></div>
+            </div>
+
+            <div id="nueva-cita" class="tab-content">
+                <h3>Agendar Nueva Cita</h3>
+                <form id="new-appointment-form">
+                    <select id="pet-select" required>
+                        <option value="">Selecciona una mascota</option>
+                    </select>
+                    <input type="date" id="appointment-date" required>
+                    <select id="appointment-time" required>
+                        <option value="">Selecciona una hora</option>
+                        <!-- Horas se llenarán con JavaScript -->
+                    </select>
+                    <select id="appointment-reason" required>
+                        <option value="">Motivo de la cita</option>
+                        <option value="consulta">Consulta general</option>
+                        <option value="vacuna">Vacunación</option>
+                        <option value="emergencia">Emergencia</option>
+                    </select>
+                    <button type="submit">Agendar Cita</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
