@@ -16,6 +16,7 @@
     </header>
 
     <main>
+        <!-- Modal Login -->
         <div id="login-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
@@ -25,23 +26,27 @@
                     <input type="password" id="login-password" placeholder="Contraseña" required>
                     <button type="submit">Ingresar</button>
                 </form>
+                <div id="login-error" class="error-message"></div>
             </div>
         </div>
 
+        <!-- Modal Registro -->
         <div id="register-modal" class="modal">
             <div class="modal-content">
                 <span class="close">&times;</span>
-                <h2>Registro de Usuario</h2>
+                <h2>Registro</h2>
                 <form id="register-form">
                     <input type="text" id="reg-name" placeholder="Nombre completo" required>
                     <input type="email" id="reg-email" placeholder="Correo electrónico" required>
                     <input type="tel" id="reg-phone" placeholder="Teléfono" required>
-                    <input type="password" id="reg-password" placeholder="Contraseña" required>
+                    <input type="password" id="reg-password" placeholder="Contraseña (mín. 6 caracteres)" required>
                     <button type="submit">Registrarse</button>
                 </form>
+                <div id="register-error" class="error-message"></div>
             </div>
         </div>
 
+        <!-- Dashboard -->
         <section id="dashboard" class="hidden">
             <h2>Bienvenido, <span id="username"></span></h2>
             
@@ -54,33 +59,37 @@
             <div id="mascotas" class="tab-content active">
                 <h3>Mis Mascotas</h3>
                 <button id="add-pet-btn">Agregar Mascota</button>
-                <div id="pets-list"></div>
+                <div id="pets-list" class="cards-container"></div>
             </div>
 
             <div id="citas" class="tab-content">
                 <h3>Mis Citas</h3>
-                <div id="appointments-list"></div>
+                <div id="appointments-list" class="cards-container"></div>
             </div>
 
             <div id="nueva-cita" class="tab-content">
-                <h3>Agendar Nueva Cita</h3>
+                <h3>Agendar Cita</h3>
                 <form id="new-appointment-form">
                     <select id="pet-select" required>
                         <option value="">Selecciona una mascota</option>
                     </select>
-                    <input type="date" id="appointment-date" required>
-                    <select id="appointment-time" required>
-                        <option value="">Selecciona una hora</option>
-                        <!-- Horas se llenarán con JavaScript -->
-                    </select>
+                    <input type="date" id="appointment-date" min="" required>
+                    <div class="time-selection">
+                        <label>Selecciona una hora:</label>
+                        <select id="appointment-time" required>
+                            <option value="">Cargando horas...</option>
+                        </select>
+                    </div>
                     <select id="appointment-reason" required>
-                        <option value="">Motivo de la cita</option>
+                        <option value="">Motivo</option>
                         <option value="consulta">Consulta general</option>
                         <option value="vacuna">Vacunación</option>
                         <option value="emergencia">Emergencia</option>
+                        <option value="cirugia">Cirugía</option>
                     </select>
                     <button type="submit">Agendar Cita</button>
                 </form>
+                <div id="appointment-error" class="error-message"></div>
             </div>
         </section>
     </main>

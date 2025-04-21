@@ -1,12 +1,22 @@
+:root {
+    --primary-color: #4CAF50;
+    --secondary-color: #333;
+    --error-color: #f44336;
+    --success-color: #4CAF50;
+    --border-color: #ddd;
+    --card-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
     line-height: 1.6;
+    color: #333;
 }
 
 header {
-    background: #4CAF50;
+    background: var(--primary-color);
     color: white;
     padding: 1rem;
     display: flex;
@@ -15,16 +25,18 @@ header {
 }
 
 button {
-    background: #333;
+    background: var(--secondary-color);
     color: white;
     border: none;
     padding: 0.5rem 1rem;
     cursor: pointer;
     margin: 0.2rem;
+    border-radius: 4px;
+    transition: background 0.3s;
 }
 
 button:hover {
-    background: #555;
+    opacity: 0.9;
 }
 
 .modal {
@@ -39,25 +51,26 @@ button:hover {
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: white;
     margin: 15% auto;
     padding: 20px;
-    border: 1px solid #888;
     width: 80%;
     max-width: 400px;
+    border-radius: 5px;
+    box-shadow: var(--card-shadow);
 }
 
 .close {
     color: #aaa;
     float: right;
     font-size: 28px;
-    font-weight: bold;
     cursor: pointer;
 }
 
 .tabs {
     display: flex;
     margin-bottom: 1rem;
+    gap: 0.5rem;
 }
 
 .tab-btn {
@@ -66,27 +79,83 @@ button:hover {
 }
 
 .tab-btn.active {
-    background: #4CAF50;
+    background: var(--primary-color);
     color: white;
 }
 
 .tab-content {
     display: none;
     padding: 1rem;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
 }
 
 .tab-content.active {
     display: block;
 }
 
+.cards-container {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
 .pet-card, .appointment-card {
-    border: 1px solid #ddd;
-    padding: 1rem;
-    margin: 0.5rem 0;
+    border: 1px solid var(--border-color);
+    padding: 1.2rem;
     border-radius: 5px;
+    box-shadow: var(--card-shadow);
+}
+
+.pet-card h4 {
+    color: var(--primary-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.pet-card p {
+    margin: 0.3rem 0;
+}
+
+.error-message {
+    color: var(--error-color);
+    margin-top: 1rem;
+    display: none;
 }
 
 .hidden {
     display: none;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 0.5rem;
+    margin: 0.5rem 0;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.time-selection {
+    margin: 1rem 0;
+}
+
+.time-selection label {
+    display: block;
+    margin-bottom: 0.3rem;
+    font-weight: bold;
+}
+
+@media (max-width: 600px) {
+    .modal-content {
+        width: 90%;
+    }
+    
+    .tabs {
+        flex-direction: column;
+    }
 }
