@@ -1,5 +1,5 @@
 // Datos iniciales
-let users = [
+let users = JSON.parse(localStorage.getItem('vetAppUsers')) || [
     {
         id: 1,
         name: "Johan Cruz Perez",
@@ -9,7 +9,7 @@ let users = [
     }
 ];
 
-let pets = [
+let pets = JSON.parse(localStorage.getItem('vetAppPets')) || [
     {
         id: 1,
         ownerId: 1,
@@ -22,8 +22,9 @@ let pets = [
     }
 ];
 
-let appointments = [];
+let appointments = JSON.parse(localStorage.getItem('vetAppAppointments')) || [];
 let currentUser = null;
+let inactivityTimer;
 
 // Elementos DOM
 const DOM = {
@@ -52,7 +53,42 @@ const DOM = {
 document.addEventListener('DOMContentLoaded', () => {
     initEventListeners();
     setMinDateForAppointments();
+    loadFromLocalStorage();
 });
+
+// Función para sanitizar entradas
+function sanitizeInput(input) {
+    if (typeof input !== 'string') return input;
+    const div = document.createElement('div');
+    div.textContent = input;
+    return div.innerHTML;
+}
+
+// Función para guardar datos en localStorage
+function saveToLocalStorage() {
+    try {
+        localStorage.setItem('vetAppUsers', JSON.stringify(users));
+        localStorage.setItem('vetAppPets', JSON.stringify(pets));
+        localStorage.setItem('vetAppAppointments', JSON.stringify(appointments));
+    } catch (error) {
+        console.error('Error al guardar en localStorage:', error);
+    }
+}
+
+// Función para cargar datos desde localStorage
+function loadFromLocalStorage() {
+    try {
+        const savedUsers = localStorage.getItem('vetAppUsers');
+        const savedPets = localStorage.getItem('vetAppPets');
+        const savedAppointments = localStorage.getItem('vetAppAppointments');
+
+        if (savedUsers) users = JSON.parse(savedUsers);
+        if (savedPets) pets = JSON.parse(savedPets);
+        if (savedAppointments) appointments = JSON.parse(savedAppointments);
+    } catch (error) {
+        console.error('Error al cargar desde localStorage:', error);
+    }
+}
 
 // Event Listeners
 function initEventListeners() {
@@ -87,324 +123,462 @@ function initEventListeners() {
     });
 }
 
-// Funciones principales
-function handleLogin(e) {
+async function handleLogin(e) {
     e.preventDefault();
-    const email = DOM.loginForm['login-email'].value.trim();
-    const password = DOM.loginForm['login-password'].value;
+    try {
+        const email = DOM.loginForm['login-email'].value.trim();
+        const password = DOM.loginForm['login-password'].value;
 
-    const user = users.find(u => u.email === email && u.password === password);
+        if (!email || !password) {
+            throw new Error('Todos los campos son requeridos');
+        }
 
-    if (user) {
+        const user = users.find(u => u.email === email && u.password === password);
+        if (!user) throw new Error('Credenciales incorrectas');
         currentUser = user;
         DOM.loginModal.style.display = 'none';
         DOM.loginForm.reset();
         showDashboard();
-    } else {
-        showError(DOM.loginError, 'Credenciales incorrectas');
+    } catch (error) {
+        showError(DOM.loginError, error.message);
+        console.error('Error en login:', error);
     }
 }
 
 function handleRegister(e) {
     e.preventDefault();
-    const name = DOM.registerForm['reg-name'].value.trim();
-    const email = DOM.registerForm['reg-email'].value.trim();
-    const phone = DOM.registerForm['reg-phone'].value.trim();
-    const password = DOM.registerForm['reg-password'].value;
+    try {
+        const name = DOM.registerForm['reg-name'].value.trim();
+        const email = DOM.registerForm['reg-email'].value.trim();
+        const phone = DOM.registerForm['reg-phone'].value.trim();
+        const password = DOM.registerForm['reg-password'].value;
 
-    if (users.some(u => u.email === email)) {
-        showError(DOM.registerError, 'El correo ya está registrado');
-        return;
+        // Validaciones mejoradas
+        if (!name || !email || !phone || !password) {
+            throw new Error('Todos los campos son requeridos');
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            throw new Error('Ingrese un correo electrónico válido');
+        }
+
+        if (password.length < 6) {
+            throw new Error('La contraseña debe tener al menos 6 caracteres');
+        }
+
+        if (users.some(u => u.email === email)) {
+            throw new Error('El correo ya está registrado');
+        }
+
+        const newUser = {
+            id: Date.now(),
+            name: sanitizeInput(name),
+            email: sanitizeInput(email),
+            phone: sanitizeInput(phone),
+            password: password // En una app real, esto debería estar hasheado
+        };
+
+        users.push(newUser);
+        currentUser = newUser;
+        DOM.registerModal.style.display = 'none';
+        DOM.registerForm.reset();
+        saveToLocalStorage();
+        showDashboard();
+        alert(`¡Registro exitoso! Bienvenido ${sanitizeInput(name)}`);
+    } catch (error) {
+        showError(DOM.registerError, error.message);
+        console.error('Error en registro:', error);
     }
-
-    const newUser = {
-        id: Date.now(),
-        name,
-        email,
-        phone,
-        password
-    };
-
-    users.push(newUser);
-    currentUser = newUser;
-    DOM.registerModal.style.display = 'none';
-    DOM.registerForm.reset();
-    showDashboard();
-    alert(`¡Registro exitoso! Bienvenido ${name}`);
 }
 
 function showDashboard() {
-    DOM.userInfo.innerHTML = `
-        <span>${currentUser.name}</span>
-        <button id="logout-btn">Cerrar Sesión</button>
-    `;
-    document.getElementById('logout-btn').addEventListener('click', logout);
-    DOM.username.textContent = currentUser.name;
-    DOM.dashboard.classList.remove('hidden');
-    loadUserData();
+    try {
+        DOM.userInfo.innerHTML = `
+            <span>${sanitizeInput(currentUser.name)}</span>
+            <button id="logout-btn">Cerrar Sesión</button>
+        `;
+        document.getElementById('logout-btn').addEventListener('click', logout);
+        DOM.username.textContent = sanitizeInput(currentUser.name);
+        DOM.dashboard.classList.remove('hidden');
+        loadUserData();
+        
+        // Configurar timeout de inactividad
+        resetInactivityTimer();
+        document.addEventListener('mousemove', resetInactivityTimer);
+        document.addEventListener('keypress', resetInactivityTimer);
+    } catch (error) {
+        console.error('Error mostrando dashboard:', error);
+        alert('Ocurrió un error al cargar el dashboard. Por favor intenta nuevamente.');
+    }
+}
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        if (currentUser) {
+            alert('Tu sesión ha expirado por inactividad');
+            logout();
+        }
+    }, 30 * 60 * 1000); // 30 minutos
 }
 
 function logout() {
-    currentUser = null;
-    DOM.dashboard.classList.add('hidden');
-    DOM.userInfo.innerHTML = `
-        <button id="login-btn">Iniciar Sesión</button>
-        <button id="register-btn">Registrarse</button>
-    `;
-    // Reasignar eventos
-    document.getElementById('login-btn').addEventListener('click', () => showModal(DOM.loginModal));
-    document.getElementById('register-btn').addEventListener('click', () => showModal(DOM.registerModal));
+    try {
+        currentUser = null;
+        DOM.dashboard.classList.add('hidden');
+        DOM.userInfo.innerHTML = `
+            <button id="login-btn">Iniciar Sesión</button>
+            <button id="register-btn">Registrarse</button>
+        `;
+        // Reasignar eventos
+        document.getElementById('login-btn').addEventListener('click', () => showModal(DOM.loginModal));
+        document.getElementById('register-btn').addEventListener('click', () => showModal(DOM.registerModal));
+        
+        // Limpiar timer de inactividad
+        clearTimeout(inactivityTimer);
+    } catch (error) {
+        console.error('Error en logout:', error);
+    }
 }
 
 function loadUserData() {
-    loadPets();
-    loadAppointments();
-    fillPetSelect();
-    fillTimeSlots();
+    try {
+        loadPets();
+        loadAppointments();
+        fillPetSelect();
+        fillTimeSlots();
+    } catch (error) {
+        console.error('Error cargando datos:', error);
+        alert('Ocurrió un error al cargar los datos. Por favor intenta nuevamente.');
+        // Mostrar estado mínimo funcional
+        DOM.petsList.innerHTML = '<p>No se pudieron cargar las mascotas</p>';
+        DOM.appointmentsList.innerHTML = '<p>No se pudieron cargar las citas</p>';
+    }
 }
 
 function loadPets() {
-    const userPets = pets.filter(pet => pet.ownerId === currentUser.id);
-    DOM.petsList.innerHTML = '';
+    try {
+        const userPets = pets.filter(pet => pet.ownerId === currentUser.id);
+        DOM.petsList.innerHTML = '';
 
-    if (userPets.length === 0) {
-        DOM.petsList.innerHTML = '<p>No tienes mascotas registradas</p>';
-        return;
-    }
+        if (userPets.length === 0) {
+            DOM.petsList.innerHTML = '<p>No tienes mascotas registradas</p>';
+            return;
+        }
 
-    userPets.forEach(pet => {
-        const petCard = document.createElement('div');
-        petCard.className = 'pet-card';
-        petCard.innerHTML = `
-            <h4>${pet.name}</h4>
-            <p><strong>Especie:</strong> ${pet.species}</p>
-            <p><strong>Raza:</strong> ${pet.breed}</p>
-            <p><strong>Edad:</strong> ${pet.age} años</p>
-            <p><strong>Peso:</strong> ${pet.weight} kg</p>
-            ${pet.notes ? `<p><strong>Notas:</strong> ${pet.notes}</p>` : ''}
-            <button class="delete-pet-btn" data-id="${pet.id}">Eliminar</button>
-        `;
-        DOM.petsList.appendChild(petCard);
-    });
-
-    // Event listeners para botones de eliminar
-    document.querySelectorAll('.delete-pet-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            if (confirm('¿Estás seguro de eliminar esta mascota?')) {
-                const petId = parseInt(e.target.getAttribute('data-id'));
-                deletePet(petId);
-            }
+        userPets.forEach(pet => {
+            const petCard = document.createElement('div');
+            petCard.className = 'pet-card';
+            petCard.innerHTML = `
+                <h4>${sanitizeInput(pet.name)}</h4>
+                <p><strong>Especie:</strong> ${sanitizeInput(pet.species)}</p>
+                <p><strong>Raza:</strong> ${sanitizeInput(pet.breed)}</p>
+                <p><strong>Edad:</strong> ${pet.age} años</p>
+                <p><strong>Peso:</strong> ${pet.weight} kg</p>
+                ${pet.notes ? `<p><strong>Notas:</strong> ${sanitizeInput(pet.notes)}</p>` : ''}
+                <button class="delete-pet-btn" data-id="${pet.id}">Eliminar</button>
+            `;
+            DOM.petsList.appendChild(petCard);
         });
-    });
+
+        // Event listeners para botones de eliminar
+        document.querySelectorAll('.delete-pet-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (confirm('¿Estás seguro de eliminar esta mascota?')) {
+                    const petId = parseInt(e.target.getAttribute('data-id'));
+                    deletePet(petId);
+                }
+            });
+        });
+    } catch (error) {
+        throw error;
+    }
 }
 
 function loadAppointments() {
-    const userAppointments = appointments.filter(apt => apt.ownerId === currentUser.id);
-    DOM.appointmentsList.innerHTML = '';
+    try {
+        const userAppointments = appointments.filter(apt => apt.ownerId === currentUser.id);
+        DOM.appointmentsList.innerHTML = '';
 
-    if (userAppointments.length === 0) {
-        DOM.appointmentsList.innerHTML = '<p>No tienes citas agendadas</p>';
-        return;
-    }
+        if (userAppointments.length === 0) {
+            DOM.appointmentsList.innerHTML = '<p>No tienes citas agendadas</p>';
+            return;
+        }
 
-    userAppointments.forEach(apt => {
-        const pet = pets.find(p => p.id === apt.petId);
-        const aptCard = document.createElement('div');
-        aptCard.className = 'appointment-card';
-        aptCard.innerHTML = `
-            <h4>Cita para ${pet?.name || 'Mascota'}</h4>
-            <p><strong>Fecha:</strong> ${formatDate(apt.date)}</p>
-            <p><strong>Hora:</strong> ${apt.time}</p>
-            <p><strong>Motivo:</strong> ${getReasonText(apt.reason)}</p>
-            <p><strong>Estado:</strong> ${apt.status}</p>
-            <button class="cancel-apt-btn" data-id="${apt.id}">Cancelar Cita</button>
-        `;
-        DOM.appointmentsList.appendChild(aptCard);
-    });
-
-    // Event listeners para botones de cancelar
-    document.querySelectorAll('.cancel-apt-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            if (confirm('¿Estás seguro de cancelar esta cita?')) {
-                const aptId = parseInt(e.target.getAttribute('data-id'));
-                cancelAppointment(aptId);
-            }
+        userAppointments.forEach(apt => {
+            const pet = pets.find(p => p.id === apt.petId);
+            const aptCard = document.createElement('div');
+            aptCard.className = 'appointment-card';
+            aptCard.innerHTML = `
+                <h4>Cita para ${pet?.name ? sanitizeInput(pet.name) : 'Mascota'}</h4>
+                <p><strong>Fecha:</strong> ${formatDate(apt.date)}</p>
+                <p><strong>Hora:</strong> ${sanitizeInput(apt.time)}</p>
+                <p><strong>Motivo:</strong> ${getReasonText(apt.reason)}</p>
+                <p><strong>Estado:</strong> ${sanitizeInput(apt.status)}</p>
+                <button class="cancel-apt-btn" data-id="${apt.id}">Cancelar Cita</button>
+            `;
+            DOM.appointmentsList.appendChild(aptCard);
         });
-    });
+
+        // Event listeners para botones de cancelar
+        document.querySelectorAll('.cancel-apt-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (confirm('¿Estás seguro de cancelar esta cita?')) {
+                    const aptId = parseInt(e.target.getAttribute('data-id'));
+                    cancelAppointment(aptId);
+                }
+            });
+        });
+    } catch (error) {
+        throw error;
+    }
 }
 
 function showAddPetForm() {
-    DOM.petsList.innerHTML = `
-        <form id="add-pet-form">
-            <input type="text" id="pet-name" placeholder="Nombre" required>
-            <select id="pet-species" required>
-                <option value="">Especie</option>
-                <option value="perro">Perro</option>
-                <option value="gato">Gato</option>
-                <option value="otro">Otro</option>
-            </select>
-            <input type="text" id="pet-breed" placeholder="Raza" required>
-            <input type="number" id="pet-age" placeholder="Edad (años)" min="0" required>
-            <input type="number" id="pet-weight" placeholder="Peso (kg)" step="0.1" min="0" required>
-            <textarea id="pet-notes" placeholder="Notas médicas"></textarea>
-            <button type="submit">Guardar Mascota</button>
-            <button type="button" id="cancel-add-pet">Cancelar</button>
-        </form>
-    `;
+    try {
+        DOM.petsList.innerHTML = `
+            <form id="add-pet-form">
+                <input type="text" id="pet-name" placeholder="Nombre" required>
+                <select id="pet-species" required>
+                    <option value="">Especie</option>
+                    <option value="perro">Perro</option>
+                    <option value="gato">Gato</option>
+                    <option value="otro">Otro</option>
+                </select>
+                <input type="text" id="pet-breed" placeholder="Raza" required>
+                <input type="number" id="pet-age" placeholder="Edad (años)" min="0" required>
+                <input type="number" id="pet-weight" placeholder="Peso (kg)" step="0.1" min="0" required>
+                <textarea id="pet-notes" placeholder="Notas médicas"></textarea>
+                <button type="submit">Guardar Mascota</button>
+                <button type="button" id="cancel-add-pet">Cancelar</button>
+            </form>
+        `;
 
-    document.getElementById('add-pet-form').addEventListener('submit', handleAddPet);
-    document.getElementById('cancel-add-pet').addEventListener('click', loadPets);
+        document.getElementById('add-pet-form').addEventListener('submit', handleAddPet);
+        document.getElementById('cancel-add-pet').addEventListener('click', loadPets);
+    } catch (error) {
+        console.error('Error mostrando formulario de mascota:', error);
+        loadPets();
+    }
 }
 
 function handleAddPet(e) {
     e.preventDefault();
-    const form = e.target;
+    try {
+        const form = e.target;
 
-    const newPet = {
-        id: Date.now(),
-        ownerId: currentUser.id,
-        name: form['pet-name'].value.trim(),
-        species: form['pet-species'].value,
-        breed: form['pet-breed'].value.trim(),
-        age: parseInt(form['pet-age'].value),
-        weight: parseFloat(form['pet-weight'].value),
-        notes: form['pet-notes'].value.trim()
-    };
+        const newPet = {
+            id: Date.now(),
+            ownerId: currentUser.id,
+            name: sanitizeInput(form['pet-name'].value.trim()),
+            species: sanitizeInput(form['pet-species'].value),
+            breed: sanitizeInput(form['pet-breed'].value.trim()),
+            age: parseInt(form['pet-age'].value),
+            weight: parseFloat(form['pet-weight'].value),
+            notes: sanitizeInput(form['pet-notes'].value.trim())
+        };
 
-    // Validaciones
-    if (isNaN(newPet.age) || isNaN(newPet.weight) || newPet.age < 0 || newPet.weight <= 0) {
-        alert('Edad y peso deben ser valores válidos');
-        return;
+        // Validaciones
+        if (isNaN(newPet.age) || isNaN(newPet.weight) || newPet.age < 0 || newPet.weight <= 0) {
+            throw new Error('Edad y peso deben ser valores válidos');
+        }
+
+        pets.push(newPet);
+        saveToLocalStorage();
+        loadUserData();
+        alert('Mascota registrada exitosamente');
+    } catch (error) {
+        alert(error.message);
+        console.error('Error agregando mascota:', error);
     }
-
-    pets.push(newPet);
-    loadUserData();
-    alert('Mascota registrada exitosamente');
 }
 
 function fillPetSelect() {
-    const userPets = pets.filter(pet => pet.ownerId === currentUser.id);
-    DOM.petSelect.innerHTML = '<option value="">Selecciona una mascota</option>';
+    try {
+        const userPets = pets.filter(pet => pet.ownerId === currentUser.id);
+        DOM.petSelect.innerHTML = '<option value="">Selecciona una mascota</option>';
 
-    userPets.forEach(pet => {
-        const option = document.createElement('option');
-        option.value = pet.id;
-        option.textContent = pet.name;
-        DOM.petSelect.appendChild(option);
-    });
+        userPets.forEach(pet => {
+            const option = document.createElement('option');
+            option.value = pet.id;
+            option.textContent = sanitizeInput(pet.name);
+            DOM.petSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error llenando selector de mascotas:', error);
+    }
 }
 
 function fillTimeSlots() {
-    const date = DOM.appointmentDate.value || new Date().toISOString().split('T')[0];
-    const availableHours = generateAvailableHours(date);
-    
-    DOM.appointmentTime.innerHTML = '<option value="">Selecciona una hora</option>';
-    
-    availableHours.forEach(hour => {
-        const option = document.createElement('option');
-        option.value = hour;
-        option.textContent = hour;
-        DOM.appointmentTime.appendChild(option);
-    });
-
-    // Actualizar horas cuando cambia la fecha
-    DOM.appointmentDate.addEventListener('change', () => {
-        const selectedDate = DOM.appointmentDate.value;
-        const hours = generateAvailableHours(selectedDate);
+    try {
+        const date = DOM.appointmentDate.value || new Date().toISOString().split('T')[0];
+        const availableHours = generateAvailableHours(date);
         
         DOM.appointmentTime.innerHTML = '<option value="">Selecciona una hora</option>';
-        hours.forEach(hour => {
+        
+        availableHours.forEach(hour => {
             const option = document.createElement('option');
             option.value = hour;
             option.textContent = hour;
             DOM.appointmentTime.appendChild(option);
         });
-    });
+
+        // Actualizar horas cuando cambia la fecha
+        DOM.appointmentDate.addEventListener('change', () => {
+            const selectedDate = DOM.appointmentDate.value;
+            const hours = generateAvailableHours(selectedDate);
+            
+            DOM.appointmentTime.innerHTML = '<option value="">Selecciona una hora</option>';
+            hours.forEach(hour => {
+                const option = document.createElement('option');
+                option.value = hour;
+                option.textContent = hour;
+                DOM.appointmentTime.appendChild(option);
+            });
+        });
+    } catch (error) {
+        console.error('Error llenando horas disponibles:', error);
+    }
 }
 
 function generateAvailableHours(date) {
-    const existingAppointments = appointments.filter(apt => 
-        apt.date === date && apt.status !== 'cancelada'
-    );
-    const takenHours = existingAppointments.map(apt => apt.time);
-    
-    const allHours = [];
-    for (let hour = 9; hour <= 17; hour++) {
-        allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+    try {
+        const existingAppointments = appointments.filter(apt => 
+            apt.date === date && apt.status !== 'cancelada'
+        );
+        const takenHours = existingAppointments.map(apt => apt.time);
+        
+        const allHours = [];
+        for (let hour = 9; hour <= 17; hour++) {
+            allHours.push(`${hour.toString().padStart(2, '0')}:00`);
+        }
+        
+        return allHours.filter(hour => !takenHours.includes(hour));
+    } catch (error) {
+        console.error('Error generando horas disponibles:', error);
+        return [];
     }
-    
-    return allHours.filter(hour => !takenHours.includes(hour));
 }
 
 function handleNewAppointment(e) {
     e.preventDefault();
-    const petId = parseInt(DOM.petSelect.value);
-    const date = DOM.appointmentDate.value;
-    const time = DOM.appointmentTime.value;
-    const reason = DOM.newAppointmentForm['appointment-reason'].value;
+    try {
+        const petId = parseInt(DOM.petSelect.value);
+        const date = DOM.appointmentDate.value;
+        const time = DOM.appointmentTime.value;
+        const reason = DOM.newAppointmentForm['appointment-reason'].value;
 
-    if (!petId || !date || !time || !reason) {
-        showError(DOM.appointmentError, 'Todos los campos son requeridos');
-        return;
+        if (!petId || !date || !time || !reason) {
+            throw new Error('Todos los campos son requeridos');
+        }
+
+        const selectedDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (selectedDate < today) {
+            throw new Error('No puedes agendar citas en fechas pasadas');
+        }
+
+        const newAppointment = {
+            id: Date.now(),
+            ownerId: currentUser.id,
+            petId,
+            date,
+            time,
+            reason,
+            status: 'pendiente'
+        };
+
+        appointments.push(newAppointment);
+        saveToLocalStorage();
+        DOM.newAppointmentForm.reset();
+        loadUserData();
+        alert('Cita agendada exitosamente');
+        document.querySelector('[data-tab="citas"]').click();
+    } catch (error) {
+        showError(DOM.appointmentError, error.message);
+        console.error('Error agendando cita:', error);
     }
-
-    const newAppointment = {
-        id: Date.now(),
-        ownerId: currentUser.id,
-        petId,
-        date,
-        time,
-        reason,
-        status: 'pendiente'
-    };
-
-    appointments.push(newAppointment);
-    DOM.newAppointmentForm.reset();
-    loadUserData();
-    alert('Cita agendada exitosamente');
-    document.querySelector('[data-tab="citas"]').click();
 }
 
 function deletePet(petId) {
-    pets = pets.filter(p => p.id !== petId);
-    // Eliminar citas asociadas
-    appointments = appointments.filter(apt => apt.petId !== petId);
-    loadUserData();
+    try {
+        pets = pets.filter(p => p.id !== petId);
+        // Eliminar citas asociadas
+        appointments = appointments.filter(apt => apt.petId !== petId);
+        saveToLocalStorage();
+        loadUserData();
+    } catch (error) {
+        console.error('Error eliminando mascota:', error);
+        alert('Ocurrió un error al eliminar la mascota');
+    }
 }
 
 function cancelAppointment(aptId) {
-    const appointment = appointments.find(apt => apt.id === aptId);
-    if (appointment) {
-        appointment.status = 'cancelada';
-        loadUserData();
+    try {
+        const appointment = appointments.find(apt => apt.id === aptId);
+        if (appointment) {
+            appointment.status = 'cancelada';
+            saveToLocalStorage();
+            loadUserData();
+        }
+    } catch (error) {
+        console.error('Error cancelando cita:', error);
+        alert('Ocurrió un error al cancelar la cita');
     }
 }
 
 // Helper functions
 function showModal(modal) {
-    closeAllModals();
-    modal.style.display = 'block';
+    try {
+        closeAllModals();
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('Error mostrando modal:', error);
+    }
 }
 
 function closeAllModals() {
-    document.querySelectorAll('.modal').forEach(modal => {
-        modal.style.display = 'none';
-    });
+    try {
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+        document.querySelectorAll('.error-message').forEach(el => {
+            el.style.display = 'none';
+        });
+    } catch (error) {
+        console.error('Error cerrando modales:', error);
+    }
 }
 
 function showError(element, message) {
-    element.textContent = message;
-    element.style.display = 'block';
+    try {
+        element.textContent = message;
+        element.style.display = 'block';
+    } catch (error) {
+        console.error('Error mostrando mensaje de error:', error);
+    }
 }
 
 function setMinDateForAppointments() {
-    const today = new Date().toISOString().split('T')[0];
-    DOM.appointmentDate.min = today;
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        DOM.appointmentDate.min = today;
+    } catch (error) {
+        console.error('Error estableciendo fecha mínima:', error);
+    }
 }
 
 function formatDate(dateString) {
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('es-ES', options);
+    try {
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString('es-ES', options);
+    } catch (error) {
+        console.error('Error formateando fecha:', error);
+        return dateString;
+    }
 }
 
 function getReasonText(reason) {
